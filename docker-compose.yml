@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  tfserving:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./outputs/serving_model:/models/breast_cancer_wisconsin_model:ro
+      - ./config:/model_config:ro
+    environment:
+      - MODEL_NAME=breast_cancer_wisconsin_model
+      - MODEL_BASE_PATH=/models
+      - MONITORING_CONFIG=/model_config/prometheus.config
+      - PORT=8501
+    networks:
+      - monitor-net
+
+  prometheus:
+    build:
+      context: ./monitoring
+      dockerfile: Dockerfile
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - tfserving
+    networks:
+      - monitor-net
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_ROOT_URL=https://${RAILWAY_PUBLIC_DOMAIN}
+    depends_on:
+      - prometheus
+    networks:
+      - monitor-net
+
+networks:
+  monitor-net:
+    driver: bridge

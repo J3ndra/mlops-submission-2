@@ -1,0 +1,53 @@
+services:
+  tfserving:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+      - "8500:8500"
+    volumes:
+      - ./outputs/serving_model:/models/breast_cancer_wisconsin_model:ro
+      - ./config:/model_config:ro
+    environment:
+      - MODEL_NAME=breast_cancer_wisconsin_model
+      - MODEL_BASE_PATH=/models
+      - MONITORING_CONFIG=/model_config/prometheus.config
+      - PORT=8501
+    networks:
+      - monitor-net
+
+  prometheus:
+    build:
+      context: ./monitoring
+      dockerfile: Dockerfile
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - tfserving
+    networks:
+      - monitor-net
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - monitor-net
+
+networks:
+  monitor-net:
+    driver: bridge
