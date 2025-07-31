@@ -136,24 +136,8 @@ def init_components(
 
     eval_config = tfma.EvalConfig(
         model_specs=[tfma.ModelSpec(label_key="diagnosis_xf")],
-        slicing_specs=[tfma.SlicingSpec()],
-        metrics_specs=[
-            tfma.MetricsSpec(metrics=[
-                tfma.MetricConfig(class_name='AUC'),
-                tfma.MetricConfig(class_name='Precision'),
-                tfma.MetricConfig(class_name='Recall'),
-                tfma.MetricConfig(class_name='ExampleCount'),
-                tfma.MetricConfig(
-                    class_name='BinaryAccuracy',
-                    threshold=tfma.MetricThreshold(
-                        value_threshold=tfma.GenericValueThreshold(
-                            lower_bound={'value': 0.5}
-                        )
-                    )
-                )
-            ])
-        ]
-    )
+        slicing_specs=[slicing_specs],
+        metrics_specs=[metrics_specs])
 
     evaluator = Evaluator(
         examples=transform.outputs['transformed_examples'],
